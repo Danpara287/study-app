@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>Ultimate Study Dashboard Pro Max</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #7B4BFF; --secondary: #2DCC9F; --bg: #F8F9FD; --gray: #bdc3c7; }
+        body { font-family: 'Helvetica Neue', Arial, sans-serif; background: var(--bg); margin: 0; padding: 20px; display: flex; justify-content: center; color: #333; }
+        .container { width: 1150px; display: flex; gap: 20px; position: relative; }
+        
+        .sidebar { width: 70px; display: flex; flex-direction: column; gap: 15px; }
+        .icon-btn { width: 60px; height: 60px; background: white; border-radius: 15px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 10px rgba(0,0,0,0.05); cursor: pointer; border: none; font-size: 24px; }
+        .icon-btn.active { color: var(--primary); border: 2px solid var(--primary); }
+
+        .page { display: none; flex: 1; gap: 20px; animation: fadeIn 0.3s ease; }
+        .page.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .main-content { flex: 2; }
+        .progress-card { background: white; border: 2px solid var(--primary); border-radius: 15px; padding: 15px 25px; margin-bottom: 20px; display: flex; align-items: center; gap: 20px; }
+        .progress-bar-bg { flex-grow: 1; height: 12px; background: #eee; border-radius: 10px; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--secondary); transition: 0.8s; }
+        
+        .timer-card { background: white; border-radius: 20px; padding: 30px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+        .mode-selector { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+        .mode-btn { border: none; background: #eee; padding: 8px 12px; border-radius: 10px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .mode-btn.active { background: var(--primary); color: white; }
+        
+        .timer-circle { width: 220px; height: 220px; border: 12px solid var(--secondary); border-radius: 50%; margin: 0 auto 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; }
+
+        .custom-input-group { display: flex; justify-content: center; gap: 5px; margin-bottom: 15px; }
+        .custom-input-group input { width: 50px; text-align: center; padding: 5px; border-radius: 5px; border: 1px solid #ddd; }
+
+        .controls { display: flex; justify-content: center; align-items: center; gap: 20px; }
+        .play-btn { background: var(--primary); color: white; border: none; width: 80px; height: 50px; border-radius: 15px; font-size: 24px; cursor: pointer; }
+        .reset-btn { background: none; border: none; color: var(--primary); font-size: 30px; cursor: pointer; }
+        
+        .task-area, .chart-area { flex: 1.2; background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); display: flex; flex-direction: column; }
+        .task-list { flex-grow: 1; overflow-y: auto; margin-bottom: 15px; min-height: 200px; }
+        .task-item { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f5f5f5; }
+        .tag { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: bold; color: white; }
+        
+        .config-section { border-top: 1px solid #eee; padding-top: 15px; font-size: 13px; }
+        .input-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        input, select { border: 1px solid #ddd; border-radius: 6px; padding: 8px; font-size: 13px; }
+        button.add-btn { background: var(--primary); color: white; border: none; border-radius: 6px; padding: 5px 12px; cursor: pointer; font-weight: bold; }
+        
+        .bgm-player { position: fixed; bottom: 20px; right: 20px; background: white; padding: 10px 15px; border-radius: 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 10px; z-index: 1000; }
+        .bgm-btn { border: none; border-radius: 20px; padding: 8px 15px; cursor: pointer; font-weight: bold; color: white; transition: 0.3s; }
+        .bgm-off { background: var(--gray); }
+        .bgm-on { background: var(--primary); }
+
+        .rtl { direction: rtl; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="app-container">
+    <div class="sidebar">
+        <button class="icon-btn active" id="btn-home" onclick="showPage('home')">🏠</button>
+        <button class="icon-btn" id="btn-stats" onclick="showPage('stats')">📈</button>
+        <select id="langSelect" onchange="changeLang()" style="width: 60px; font-size: 10px; margin-top: auto;">
+            <option value="ja">JP</option>
+            <option value="en">EN</option>
+            <option value="zh">ZH</option>
+            <option value="ko">KO</option>
+            <option value="ru">RU</option>
+            <option value="ar">AR</option>
+            <option value="el">EL</option>
+        </select>
+    </div>
+
+    <div id="page-home" class="page active">
+        <div class="main-content">
+            <div class="progress-card">
+                <div id="quote" style="font-size: 13px; width: 35%; font-weight: 500;">...</div>
+                <div style="font-size: 18px; font-weight:bold;"><span id="doneTime">0.0</span>h / <span id="goalTimeDisplay">5</span>h</div>
+                <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+                <div id="percentText" style="color: var(--secondary); font-weight:bold; width: 45px; text-align: right;">0%</div>
+            </div>
+
+            <div class="timer-card">
+                <div class="mode-selector">
+                    <button class="mode-btn active" id="mode-timer" onclick="setMode('timer')">Timer</button>
+                    <button class="mode-btn" id="mode-custom" onclick="setMode('custom')">Custom</button>
+                    <button class="mode-btn" id="mode-sw" onclick="setMode('sw')">Stopwatch</button>
+                    <button class="mode-btn" id="mode-clock" onclick="setMode('clock')">Clock</button>
+                </div>
+
+                <div id="custom-config" style="display:none;" class="custom-input-group">
+                    <input type="number" id="custom-h" placeholder="H" min="0" value="0">
+                    <input type="number" id="custom-m" placeholder="M" min="0" max="59" value="25">
+                    <input type="number" id="custom-s" placeholder="S" min="0" max="59" value="0">
+                    <button class="add-btn" onclick="applyCustomTime()">Set</button>
+                </div>
+
+                <div id="clock-config" style="display:none; margin-bottom: 10px;">
+                    <select id="timezoneSelect" onchange="updateDisplay()">
+                        <option value="Asia/Tokyo">Tokyo</option>
+                        <option value="America/New_York">New York</option>
+                        <option value="Europe/London">London</option>
+                        <option value="Asia/Dubai">Dubai</option>
+                    </select>
+                </div>
+
+                <div class="timer-circle" id="timerDisplay">25:00</div>
+
+                <div class="controls" id="timer-controls">
+                    <button class="reset-btn" onclick="resetTime()">↺</button>
+                    <button class="play-btn" onclick="toggleTime()" id="startBtn">▶</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="task-area">
+            <h3 id="txt-task-title">タスク</h3>
+            <div class="task-list" id="taskList"></div>
+            <div class="config-section">
+                <div class="input-group">
+                    <input type="text" id="taskInput" style="flex-grow:1;">
+                    <select id="tagSelect"></select>
+                    <button class="add-btn" onclick="addTask()">+</button>
+                </div>
+                <p style="font-weight: bold;" id="txt-sub-manage">教科</p>
+                <div id="subjectManageList" style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;"></div>
+                <div class="input-group">
+                    <input type="text" id="newSubName" style="flex-grow:1;">
+                    <input type="color" id="newSubColor" value="#7B4BFF" style="width:30px; border:none; height:30px;">
+                    <button class="add-btn" onclick="addNewSubject()">Add</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="page-stats" class="page">
+        <div class="chart-area" style="width: 100%;">
+            <h2 id="txt-stats-title">統計</h2>
+            <div style="flex-grow: 1; position: relative;"><canvas id="studyChart"></canvas></div>
+            <p id="totalWeeklyText"></p>
+        </div>
+    </div>
+</div>
+
+<div class="bgm-player">
+    <button onclick="toggleBGM()" id="bgmBtn" class="bgm-btn bgm-off">🎧 BGM: OFF</button>
+</div>
+
+<script>
+    const i18n = {
+        ja: { task: "今日のタスク", sub: "教科管理", stats: "学習の記録", timer: "タイマー", custom: "カスタム", sw: "計測", clock: "時計", quote: "努力は裏切らない。", subjects: ["国語", "数学", "理科", "社会", "英語"] },
+        en: { task: "Today's Task", sub: "Subjects", stats: "History", timer: "Timer", custom: "Custom", sw: "Stopwatch", clock: "Clock", quote: "No pain, no gain.", subjects: ["Lang", "Math", "Science", "Social", "English"] },
+        zh: { task: "今日任务", sub: "科目管理", stats: "统计记录", timer: "计时器", custom: "自定义", sw: "秒表", clock: "时钟", quote: "学如逆水行舟。", subjects: ["语文", "数学", "科学", "社会", "英语"] },
+        ko: { task: "오늘의 과제", sub: "과목 관리", stats: "학습 기록", timer: "타이머", custom: "커스텀", sw: "스톱워치", clock: "세계 시계", quote: "시작이 반이다.", subjects: ["국어", "수학", "과학", "사회", "영어"] },
+        ru: { task: "Задачи", sub: "Предметы", stats: "История", timer: "Таймер", custom: "Свой", sw: "Секундомер", clock: "Часы", quote: "Знание - сила.", subjects: ["Язык", "Мат", "Наука", "Общ", "Англ"] },
+        ar: { task: "مهام اليوم", sub: "المواد", stats: "الإحصائيات", timer: "مؤقت", custom: "مخصص", sw: "ساعة", clock: "ساعة", quote: "العلم نور.", subjects: ["اللغة", "الرياضيات", "العلوم", "الاجتماع", "إنجليزي"] },
+        el: { task: "Εργασίες", sub: "Μαθήματα", stats: "Στατιστικά", timer: "Χρονόμετρο", custom: "Προσαρμογή", sw: "Χρονόμετρο", clock: "Ρολόι", quote: "Η γνώση είναι δύναμη.", subjects: ["Γλώσσα", "Μαθηματικά", "Φυσική", "Κοινωνική", "Αγγλικά"] }
+    };
+
+    let state = {
+        lang: 'ja',
+        lastDate: new Date().toLocaleDateString(),
+        goalHours: 5,
+        todaySeconds: 0,
+        subjects: [], // ここは動的に生成
+        tasks: [],
+        history: {}
+    };
+
+    let timeMode = 'timer', timeLeft = 25 * 60, swSeconds = 0, timerId = null, isBgmPlaying = false, audioCtx = null, noiseNode = null;
+
+    function initSubjects() {
+        if (state.subjects.length === 0) {
+            state.subjects = i18n[state.lang].subjects.map((name, i) => ({ name, color: ['#E24A7D','#4A90E2','#2DCC9F','#F5A623','#7B4BFF'][i] }));
+        }
+    }
+
+    function loadData() {
+        const saved = localStorage.getItem('study_dashboard_v6');
+        if (saved) state = { ...state, ...JSON.parse(saved) };
+        initSubjects();
+        document.getElementById('langSelect').value = state.lang;
+        updateLanguageUI();
+    }
+    function saveData() {
+        state.history[new Date().toLocaleDateString()] = state.todaySeconds;
+        localStorage.setItem('study_dashboard_v6', JSON.stringify(state));
+    }
+
+    function changeLang() {
+        const oldLang = state.lang;
+        state.lang = document.getElementById('langSelect').value;
+        // 初期教科名を翻訳
+        state.subjects.forEach((sub, i) => {
+            if (i < 5 && i18n[oldLang].subjects.includes(sub.name)) {
+                sub.name = i18n[state.lang].subjects[i];
+            }
+        });
+        updateLanguageUI();
+        renderSubjects();
+        renderTasks();
+        saveData();
+    }
+
+    function updateLanguageUI() {
+        const lang = i18n[state.lang];
+        document.getElementById('txt-task-title').innerText = lang.task;
+        document.getElementById('txt-sub-manage').innerText = lang.sub;
+        document.getElementById('txt-stats-title').innerText = lang.stats;
+        document.getElementById('mode-timer').innerText = lang.timer;
+        document.getElementById('mode-custom').innerText = lang.custom;
+        document.getElementById('mode-sw').innerText = lang.sw;
+        document.getElementById('mode-clock').innerText = lang.clock;
+        document.getElementById('quote').innerText = "💡 " + lang.quote;
+        if (state.lang === 'ar') document.getElementById('app-container').classList.add('rtl');
+        else document.getElementById('app-container').classList.remove('rtl');
+    }
+
+    function setMode(mode) {
+        timeMode = mode;
+        if (timerId) { clearInterval(timerId); timerId = null; document.getElementById('startBtn').innerText = '▶'; }
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('mode-' + mode).classList.add('active');
+        document.getElementById('custom-config').style.display = mode === 'custom' ? 'flex' : 'none';
+        document.getElementById('clock-config').style.display = mode === 'clock' ? 'block' : 'none';
+        document.getElementById('timer-controls').style.display = mode === 'clock' ? 'none' : 'flex';
+        if (mode === 'clock') timerId = setInterval(updateDisplay, 1000);
+        updateDisplay();
+    }
+
+    function applyCustomTime() {
+        const h = parseInt(document.getElementById('custom-h').value) || 0;
+        const m = parseInt(document.getElementById('custom-m').value) || 0;
+        const s = parseInt(document.getElementById('custom-s').value) || 0;
+        timeLeft = (h * 3600) + (m * 60) + s;
+        updateDisplay();
+    }
+
+    function updateDisplay() {
+        const display = document.getElementById('timerDisplay');
+        let t = (timeMode === 'sw') ? swSeconds : timeLeft;
+        if (timeMode === 'clock') {
+            const tz = document.getElementById('timezoneSelect').value;
+            display.innerText = new Date().toLocaleTimeString('ja-JP', { timeZone: tz, hour12: false });
+        } else {
+            const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+            display.innerText = (h > 0 ? h + ":" : "") + `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+        let done = (state.todaySeconds / 3600).toFixed(1);
+        document.getElementById('doneTime').innerText = done;
+        let p = Math.min(Math.round((done / state.goalHours) * 100), 100);
+        document.getElementById('progressFill').style.width = p + "%";
+        document.getElementById('percentText').innerText = p + "%";
+    }
+
+    function toggleTime() {
+        if (timerId) { clearInterval(timerId); timerId = null; document.getElementById('startBtn').innerText = '▶'; saveData(); }
+        else {
+            timerId = setInterval(() => {
+                if (timeMode === 'timer' || timeMode === 'custom') {
+                    if (timeLeft > 0) { timeLeft--; state.todaySeconds++; }
+                    else { clearInterval(timerId); timerId = null; playAlarm(); alert("Time Up!"); }
+                } else if (timeMode === 'sw') { swSeconds++; state.todaySeconds++; }
+                updateDisplay();
+                if (state.todaySeconds % 10 === 0) saveData();
+            }, 1000);
+            document.getElementById('startBtn').innerText = 'II';
+        }
+    }
+
+    function resetTime() { timeLeft = 25 * 60; swSeconds = 0; updateDisplay(); }
+
+    function playAlarm() {
+        const c = new AudioContext(); const o = c.createOscillator(); const g = c.createGain();
+        o.connect(g); g.connect(c.destination); o.frequency.value = 523; g.gain.value = 0.1;
+        o.start(); o.stop(c.currentTime + 1);
+    }
+
+    // --- BGM (ホワイトノイズ/雨音風生成) ---
+    function toggleBGM() {
+        const btn = document.getElementById('bgmBtn');
+        if (!isBgmPlaying) {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const bufferSize = 2 * audioCtx.sampleRate, buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate), output = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+            noiseNode = audioCtx.createBufferSource(); noiseNode.buffer = buffer; noiseNode.loop = true;
+            const filter = audioCtx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 400;
+            const gain = audioCtx.createGain(); gain.gain.value = 0.05;
+            noiseNode.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+            noiseNode.start();
+            isBgmPlaying = true;
+            btn.innerText = "🎧 BGM: ON"; btn.className = "bgm-btn bgm-on";
+        } else {
+            if (noiseNode) noiseNode.stop();
+            isBgmPlaying = false;
+            btn.innerText = "🎧 BGM: OFF"; btn.className = "bgm-btn bgm-off";
+        }
+    }
+
+    function renderSubjects() {
+        const s = document.getElementById('tagSelect'), m = document.getElementById('subjectManageList');
+        s.innerHTML = ''; m.innerHTML = '';
+        state.subjects.forEach((sub, i) => {
+            const opt = document.createElement('option'); opt.value = i; opt.innerText = sub.name; s.appendChild(opt);
+            const span = document.createElement('span'); span.className = 'tag'; span.style.background = sub.color;
+            span.innerHTML = `${sub.name} <span onclick="deleteSub(${i})" style="cursor:pointer">✕</span>`; m.appendChild(span);
+        });
+    }
+
+    function addNewSubject() {
+        const n = document.getElementById('newSubName').value, c = document.getElementById('newSubColor').value;
+        if (!n) return; state.subjects.push({name:n, color:c}); renderSubjects(); saveData(); document.getElementById('newSubName').value = '';
+    }
+    function deleteSub(i) { state.subjects.splice(i,1); renderSubjects(); saveData(); }
+
+    function addTask() {
+        const t = document.getElementById('taskInput').value, i = document.getElementById('tagSelect').value;
+        if (!t) return; state.tasks.push({text:t, subIdx:i, completed:false}); renderTasks(); saveData(); document.getElementById('taskInput').value = '';
+    }
+    function renderTasks() {
+        const l = document.getElementById('taskList'); l.innerHTML = '';
+        state.tasks.forEach((t, i) => {
+            const sub = state.subjects[t.subIdx] || {name:'?', color:'#ccc'};
+            const d = document.createElement('div'); d.className = 'task-item';
+            d.innerHTML = `<div><input type="checkbox" ${t.completed?'checked':''} onchange="toggleTask(${i})"> <span style="${t.completed?'text-decoration:line-through;color:#aaa':''}">${t.text}</span></div>
+                           <div><span class="tag" style="background:${sub.color}">${sub.name}</span><span onclick="delTask(${i})" style="cursor:pointer;margin-left:8px;color:#ccc">✕</span></div>`;
+            l.appendChild(d);
+        });
+    }
+    function toggleTask(i) { state.tasks[i].completed = !state.tasks[i].completed; renderTasks(); saveData(); }
+    function delTask(i) { state.tasks.splice(i,1); renderTasks(); saveData(); }
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.icon-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('page-'+id).classList.add('active');
+        document.getElementById('btn-'+id).classList.add('active');
+        if (id === 'stats') renderChart();
+    }
+
+    let myChart = null;
+    function renderChart() {
+        const ctx = document.getElementById('studyChart').getContext('2d');
+        const labels = [], data = []; let total = 0;
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date(); d.setDate(d.getDate() - i);
+            const ds = d.toLocaleDateString(); labels.push(ds.split('/').slice(1).join('/'));
+            const h = (state.history[ds] || 0) / 3600; data.push(h.toFixed(2)); total += h;
+        }
+        document.getElementById('totalWeeklyText').innerText = `Weekly Total: ${total.toFixed(1)}h`;
+        if (myChart) myChart.destroy();
+        myChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'h', data: data, backgroundColor: '#7B4BFF', borderRadius: 5 }] }, options: { maintainAspectRatio: false } });
+    }
+
+    window.onload = () => {
+        loadData();
+        if (!localStorage.getItem('study_dashboard_v6')) {
+            state.goalHours = parseFloat(prompt("Goal (h)?", "5")) || 5;
+            saveData();
+        }
+        renderSubjects(); renderTasks(); updateDisplay();
+    };
+</script>
+</body>
+</html>
